@@ -44,7 +44,7 @@ spec:
       image: quay.io/dulltz/megaconfigmap-combiner:latest
       command: ["/combiner"]
       args:
-        - -megaconfigmap=megaconfigmap
+        - -megaconfigmap=my-conf
         - -share-dir=/data
       volumeMounts:
         - name: share
