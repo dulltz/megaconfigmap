@@ -1,40 +1,9 @@
 # This is the example YAML.
 # Please read the quick-start section. ../README.md#quick-start
 apiVersion: v1
-kind: Pod
-metadata:
-  name: megaconfigmap-demo
-spec:
-  containers:
-    - name: main
-      image: alpine
-      command: [ "sleep", "Infinity" ]
-      volumeMounts:
-        - name: share # please share the volume with combiner container
-          mountPath: /demo
-  initContainers:
-    - name: combiner
-      image: quay.io/dulltz/megaconfigmap-combiner:0.1
-      args:
-        - --megaconfigmap-path=/megaconfigmap/megaconfigmap.json
-        - --share-dir=/data
-      volumeMounts:
-        - name: share
-          mountPath: /data
-        - name: megaconfigmap
-          mountPath: /megaconfigmap
-  serviceAccountName: demo
-  volumes:
-    - name: share
-      emptyDir: {}
-    - name: megaconfigmap
-      configMap:
-        name: megaconfigmap
----
-apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: demo
+  name: megaconfigmap
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -56,4 +25,31 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: megaconfigmap
-    apiGroup: rbac.authorization.k8s.io
+    apiGroup: ""
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: megaconfigmap-demo
+spec:
+  containers:
+    - name: main
+      image: alpine
+      command: [ "sleep", "Infinity" ]
+      volumeMounts:
+        - name: share # please share the volume with combiner container
+          mountPath: /demo
+  initContainers:
+    - name: combiner
+      image: quay.io/dulltz/megaconfigmap-combiner:latest
+      command: ["/combiner"]
+      args:
+        - -megaconfigmap=megaconfigmap
+        - -share-dir=/data
+      volumeMounts:
+        - name: share
+          mountPath: /data
+  serviceAccountName: megaconfigmap
+  volumes:
+    - name: share
+      emptyDir: {}
