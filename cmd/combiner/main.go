@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	megaConfigMapPath = flag.String("megaconfigmap", "/megaconfigmap/megaconfigmap.json", "Path of the megaconfigmap")
+	megaConfigMapPath = flag.String("megaconfigmap-path", "/megaconfigmap/megaconfigmap.json", "Path of the megaconfigmap")
 	shareDir          = flag.String("share-dir", "/data", "Path of the sharing directory among the pod")
 )
 

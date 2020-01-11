@@ -1,0 +1,59 @@
+# This is the example YAML.
+# Please read the quick-start section. ../README.md#quick-start
+apiVersion: v1
+kind: Pod
+metadata:
+  name: megaconfigmap-demo
+spec:
+  containers:
+    - name: main
+      image: alpine
+      command: [ "sleep", "Infinity" ]
+      volumeMounts:
+        - name: share # please share the volume with combiner container
+          mountPath: /demo
+  initContainers:
+    - name: combiner
+      image: quay.io/dulltz/megaconfigmap-combiner:0.1
+      args:
+        - --megaconfigmap-path=/megaconfigmap/megaconfigmap.json
+        - --share-dir=/data
+      volumeMounts:
+        - name: share
+          mountPath: /data
+        - name: megaconfigmap
+          mountPath: /megaconfigmap
+  serviceAccountName: demo
+  volumes:
+    - name: share
+      emptyDir: {}
+    - name: megaconfigmap
+      configMap:
+        name: megaconfigmap
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: demo
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: configmap-getter
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "watch", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: megaconfigmap
+roleRef:
+  kind: Role
+  name: configmap-getter
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+  - kind: ServiceAccount
+    name: megaconfigmap
+    apiGroup: rbac.authorization.k8s.io

@@ -12,13 +12,11 @@ megaconfigmap enables you to manage ConfigMap larger than 1MB.
 1. Create a pod with a special init-container which shares the volume of megaconfigmap.
 
 ## Quick start
-1. `$ kubectl megaconfigmap create <name> --from-file examples/2MB-config.json`
-1. `$ kubectl apply -f examples/pod.yaml`
-1. Login to the pod, then you can see the 2MB-config.json.
-
-    ```console
-    $ kubectl exec -it megaconfigmap-example -- ls -l /data/2MB-config.json
-    ```
+1. Install kubectl-megaconfigmap in your machine.
+1. Prepare a large file. `$ dd if=/dev/zero of=examples/2MB.dummy count=2 bs=1m`
+1. Create a megaconfigmap. `$ kubectl megaconfigmap create <name> --from-file examples/2MB.dummy`
+1. Apply example pod. `$ kubectl apply -f examples/pod.yaml`
+1. Login to the pod, then you can see the 2MB.dummy. `$ kubectl exec -it megaconfigmap-demo -- ls -lh /demo/2MB.dummy`
 
 ## How it works
 When you execute `kubectl megaconfigmap create`,
