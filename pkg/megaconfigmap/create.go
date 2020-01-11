@@ -3,8 +3,8 @@ package megaconfigmap
 import (
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
-	"log"
 	"math"
 	"os"
 
@@ -62,27 +62,25 @@ func (o *CreateOptions) createFromFile() error {
 		return err
 	}
 
+	fmt.Printf("creating megaconfigmap %s...\n", o.megaConfigMapName)
 	master, err := o.createMasterConfigMap(checkSum)
 	if err != nil {
 		return err
 	}
 
 	numPartials := int64(math.Ceil(float64(stat.Size()) / float64(blockSize)))
+	fmt.Printf("creating %d partial configmaps from %s...\n", numPartials, o.megaConfigMapName)
 	for i := int64(0); i < numPartials; i++ {
 		err := func() error {
 			buf := make([]byte, blockSize)
-			_, err := f.ReadAt(buf, i*blockSize)
-			if err != nil {
+			n, err := f.ReadAt(buf, i*blockSize)
+			if err != io.EOF && err != nil {
+				defer o.k8s.CoreV1().ConfigMaps(o.namespace).Delete(master.Name, &metav1.DeleteOptions{})
 				return err
 			}
-			err = o.createPartialConfigMap(buf, i, checkSum, master)
+			err = o.createPartialConfigMap(buf[:n], i, checkSum, master)
 			if err != nil {
-				defer func() {
-					err := o.k8s.CoreV1().ConfigMaps(o.namespace).Delete(master.Name, &metav1.DeleteOptions{})
-					if err != nil {
-						log.Println(fmt.Errorf("failed to delete %s; %w", master.Name, err))
-					}
-				}()
+				defer o.k8s.CoreV1().ConfigMaps(o.namespace).Delete(master.Name, &metav1.DeleteOptions{})
 				return err
 			}
 			return nil
@@ -99,31 +97,22 @@ func (o *CreateOptions) getCheckSum() (string, error) {
 	if err != nil {
 		return "", err
 	}
-
-	if o.Options.configFlags.Namespace != nil {
-		return combiner.MapID(data, *o.Options.configFlags.Namespace, o.megaConfigMapName), nil
-	} else {
-		return combiner.MapID(data, "default", o.megaConfigMapName), nil
-	}
+	return combiner.MapID(data, o.namespace, o.megaConfigMapName), nil
 }
 
 func (o *CreateOptions) createPartialConfigMap(data []byte, order int64, sum string, master *v1.ConfigMap) error {
-	ns := "default"
-	if o.configFlags.Namespace != nil {
-		ns = *o.configFlags.Namespace
-	}
-	_, err := o.k8s.CoreV1().ConfigMaps(ns).Create(&v1.ConfigMap{
+	_, err := o.k8s.CoreV1().ConfigMaps(o.namespace).Create(&v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: ns,
+			Namespace: o.namespace,
 			Name:      fmt.Sprintf("%s-%d", o.megaConfigMapName, order),
 			Labels: map[string]string{
 				combiner.IDLabel:       sum,
-				combiner.OrderLabel:    string(order),
+				combiner.OrderLabel:    fmt.Sprintf("%d", order),
 				combiner.FileNameLabel: o.outputFile,
 			},
 			OwnerReferences: []metav1.OwnerReference{{
-				APIVersion: master.APIVersion,
-				Kind:       master.Kind,
+				APIVersion: "v1",
+				Kind:       "ConfigMap",
 				Name:       master.Name,
 				UID:        master.UID,
 			}},
@@ -134,13 +123,9 @@ func (o *CreateOptions) createPartialConfigMap(data []byte, order int64, sum str
 }
 
 func (o *CreateOptions) createMasterConfigMap(sum string) (*v1.ConfigMap, error) {
-	ns := "default"
-	if o.configFlags.Namespace != nil {
-		ns = *o.configFlags.Namespace
-	}
-	return o.k8s.CoreV1().ConfigMaps(ns).Create(&v1.ConfigMap{
+	_, err := o.k8s.CoreV1().ConfigMaps(o.namespace).Create(&v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: ns,
+			Namespace: o.namespace,
 			Name:      o.megaConfigMapName,
 			Labels: map[string]string{
 				combiner.IDLabel:       sum,
@@ -149,12 +134,16 @@ func (o *CreateOptions) createMasterConfigMap(sum string) (*v1.ConfigMap, error)
 			},
 		},
 	})
+	if err != nil {
+		return nil, err
+	}
+	return o.k8s.CoreV1().ConfigMaps(o.namespace).Get(o.megaConfigMapName, metav1.GetOptions{})
 }
 
 // NewMegaConfigMapOptions provides an instance of MegaConfigMapOptions with default values
 func NewCreateOptions(o *Options) (*CreateOptions, error) {
 	ns := "default"
-	if o.configFlags.Namespace != nil {
+	if len(*o.configFlags.Namespace) > 0 {
 		ns = *o.configFlags.Namespace
 	}
 	return &CreateOptions{
@@ -169,7 +158,7 @@ func newCmdCreate(rootOptions *Options) *cobra.Command {
 		return nil
 	}
 	cmd := &cobra.Command{
-		Use:          "megaconfigmap create my-config --from-file [flags]",
+		Use:          "create my-config --from-file [flags]",
 		Short:        "create megaconfigmap",
 		Example:      fmt.Sprintf(createExample, "kubectl"),
 		SilenceUsage: true,

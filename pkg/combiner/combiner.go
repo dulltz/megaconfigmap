@@ -61,13 +61,13 @@ func (c *Combiner) Run() error {
 	if err != nil {
 		return fmt.Errorf("failed to write to tempfile; %w", err)
 	}
-	//data, err := ioutil.ReadFile(tempFileName)
-	//if err != nil {
-	//	return err
-	//}
-	//if mapID != MapID(data, megaConfig.Namespace, megaConfig.Name) {
-	//	return errors.New("checksum is not matched")
-	//}
+	data, err := ioutil.ReadFile(tempFileName)
+	if err != nil {
+		return err
+	}
+	if mapID != MapID(data, megaConfig.Namespace, megaConfig.Name) {
+		return errors.New("checksum is not matched")
+	}
 	fileName, ok := megaConfig.Labels[FileNameLabel]
 	if !ok {
 		return errors.New(FileNameLabel + " is not found in megaconfigmap")
