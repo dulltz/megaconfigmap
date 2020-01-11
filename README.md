@@ -1,7 +1,5 @@
 # megaconfigmap
-ConfigMap with no size limit.
 
-## Description
 As you may already know, ConfigMap has 1MB size limit.
 However we often create configuration files larger than 1MB.
 
