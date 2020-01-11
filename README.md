@@ -1,9 +1,13 @@
 # megaconfigmap
 
-As you may already know, ConfigMap has 1MB size limit.
-However we often create configuration files larger than 1MB.
+As you may already know, ConfigMap has 1MB size limit.  
+However we often create configuration files larger than 1MB.👼
 
-megaconfigmap enables you to manage ConfigMap larger than 1MB.
+**megaconfigmap** enables you to manage ConfigMap larger than 1MB.
+
+This repository consists of two components:
+- `combiner` - Combine partial comfigmaps to large one. It is designed to run on init-container. 
+- `kubectl-megaconfigmap` - kubectl plugin to create large congfigmap.
 
 ## Quick start
 1. Install kubectl-megaconfigmap.
