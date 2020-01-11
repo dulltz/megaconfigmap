@@ -50,7 +50,7 @@ func (c *Combiner) Run() error {
 	}
 	mapID, ok := megaConfig.GetLabels()[IDLabel]
 	if !ok {
-		return errors.New(OrderLabel + " is not found in megaconfigmap " + c.megaConfigMapName)
+		return errors.New(IDLabel + " is not found in megaconfigmap " + c.megaConfigMapName)
 	}
 	configmaps, err := c.k8s.CoreV1().ConfigMaps(namespace).List(
 		metav1.ListOptions{LabelSelector: fmt.Sprintf("%s=%s,%s!=true", IDLabel, mapID, MasterLabel)})

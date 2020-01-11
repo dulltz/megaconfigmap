@@ -6,8 +6,8 @@ However we often create configuration files larger than 1MB.👼
 **megaconfigmap** enables you to manage ConfigMap larger than 1MB.
 
 This system consists of two components:
-- `combiner` - One-shot program to combine partial comfigmaps to large one. It is designed to run on init-container. 
 - `kubectl-megaconfigmap` - kubectl plugin to create large congfigmap.
+- `combiner` - One-shot program to combine partial comfigmaps to large one. It is designed to run on init-container. 
 
 ## Quick start
 1. Install kubectl-megaconfigmap.
