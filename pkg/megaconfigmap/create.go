@@ -7,11 +7,15 @@ import (
 	"io/ioutil"
 	"math"
 	"os"
+	"path/filepath"
 
 	"github.com/dulltz/megaconfigmap/pkg/combiner"
 	"github.com/spf13/cobra"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 const (
@@ -27,10 +31,11 @@ var (
 
 // CreateOptions provides information required to create megaconfigmap
 type CreateOptions struct {
-	Options
+	configFlags *genericclioptions.ConfigFlags
+	genericclioptions.IOStreams
+	k8s *kubernetes.Clientset
 
 	megaConfigMapName string
-	namespace         string
 	outputFile        string
 	sourceFile        string
 }
@@ -75,12 +80,12 @@ func (o *CreateOptions) createFromFile() error {
 			buf := make([]byte, blockSize)
 			n, err := f.ReadAt(buf, i*blockSize)
 			if err != io.EOF && err != nil {
-				defer o.k8s.CoreV1().ConfigMaps(o.namespace).Delete(master.Name, &metav1.DeleteOptions{})
+				defer o.k8s.CoreV1().ConfigMaps(*o.configFlags.Namespace).Delete(master.Name, &metav1.DeleteOptions{})
 				return err
 			}
 			err = o.createPartialConfigMap(buf[:n], i, checkSum, master)
 			if err != nil {
-				defer o.k8s.CoreV1().ConfigMaps(o.namespace).Delete(master.Name, &metav1.DeleteOptions{})
+				defer o.k8s.CoreV1().ConfigMaps(*o.configFlags.Namespace).Delete(master.Name, &metav1.DeleteOptions{})
 				return err
 			}
 			return nil
@@ -97,13 +102,13 @@ func (o *CreateOptions) getCheckSum() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return combiner.MapID(data, o.namespace, o.megaConfigMapName), nil
+	return combiner.MapID(data, *o.configFlags.Namespace, o.megaConfigMapName), nil
 }
 
 func (o *CreateOptions) createPartialConfigMap(data []byte, order int64, sum string, master *v1.ConfigMap) error {
-	_, err := o.k8s.CoreV1().ConfigMaps(o.namespace).Create(&v1.ConfigMap{
+	_, err := o.k8s.CoreV1().ConfigMaps(*o.configFlags.Namespace).Create(&v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: o.namespace,
+			Namespace: *o.configFlags.Namespace,
 			Name:      fmt.Sprintf("%s-%d", o.megaConfigMapName, order),
 			Labels: map[string]string{
 				combiner.IDLabel:       sum,
@@ -123,9 +128,9 @@ func (o *CreateOptions) createPartialConfigMap(data []byte, order int64, sum str
 }
 
 func (o *CreateOptions) createMasterConfigMap(sum string) (*v1.ConfigMap, error) {
-	_, err := o.k8s.CoreV1().ConfigMaps(o.namespace).Create(&v1.ConfigMap{
+	_, err := o.k8s.CoreV1().ConfigMaps(*o.configFlags.Namespace).Create(&v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: o.namespace,
+			Namespace: *o.configFlags.Namespace,
 			Name:      o.megaConfigMapName,
 			Labels: map[string]string{
 				combiner.IDLabel:       sum,
@@ -137,23 +142,29 @@ func (o *CreateOptions) createMasterConfigMap(sum string) (*v1.ConfigMap, error)
 	if err != nil {
 		return nil, err
 	}
-	return o.k8s.CoreV1().ConfigMaps(o.namespace).Get(o.megaConfigMapName, metav1.GetOptions{})
+	return o.k8s.CoreV1().ConfigMaps(*o.configFlags.Namespace).Get(o.megaConfigMapName, metav1.GetOptions{})
 }
 
 // NewMegaConfigMapOptions provides an instance of MegaConfigMapOptions with default values
-func NewCreateOptions(o *Options) (*CreateOptions, error) {
-	ns := "default"
-	if len(*o.configFlags.Namespace) > 0 {
-		ns = *o.configFlags.Namespace
+func NewCreateOptions(streams genericclioptions.IOStreams) (*CreateOptions, error) {
+	config, err := clientcmd.BuildConfigFromFlags("", filepath.Join(os.Getenv("HOME"), "/.kube/config"))
+	if err != nil {
+		return nil, err
+	}
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, err
 	}
 	return &CreateOptions{
-		Options:   *o,
-		namespace: ns,
+		configFlags: genericclioptions.NewConfigFlags(true),
+		IOStreams:   streams,
+		k8s:         clientset,
 	}, nil
 }
 
-func newCmdCreate(rootOptions *Options) *cobra.Command {
-	o, err := NewCreateOptions(rootOptions)
+// NewCmdCreate provides a cobra command wrapping MegaCreateOptions
+func NewCmdCreate(streams genericclioptions.IOStreams) *cobra.Command {
+	o, err := NewCreateOptions(streams)
 	if err != nil {
 		return nil
 	}
@@ -170,6 +181,7 @@ func newCmdCreate(rootOptions *Options) *cobra.Command {
 			return o.Create()
 		},
 	}
+	o.configFlags.AddFlags(cmd.Flags())
 	cmd.Flags().StringVar(&o.sourceFile, "from-file", o.sourceFile, "Specify filename to be stored in megaconfigmap.")
 	return cmd
 }

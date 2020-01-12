@@ -2,14 +2,10 @@ package megaconfigmap
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
-	"k8s.io/client-go/tools/clientcmd"
 )
 
 var (
@@ -23,23 +19,13 @@ var (
 type Options struct {
 	configFlags *genericclioptions.ConfigFlags
 	genericclioptions.IOStreams
-	k8s *kubernetes.Clientset
 }
 
 // NewMegaConfigMapOptions provides an instance of MegaConfigMapOptions with default values
 func NewMegaConfigMapOptions(streams genericclioptions.IOStreams) (*Options, error) {
-	config, err := clientcmd.BuildConfigFromFlags("", filepath.Join(os.Getenv("HOME"), "/.kube/config"))
-	if err != nil {
-		return nil, err
-	}
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return nil, err
-	}
 	return &Options{
 		configFlags: genericclioptions.NewConfigFlags(true),
 		IOStreams:   streams,
-		k8s:         clientset,
 	}, nil
 }
 
@@ -57,9 +43,6 @@ func NewCmdMegaConfigMap(streams genericclioptions.IOStreams) (*cobra.Command, e
 			return c.Usage()
 		},
 	}
-
-	cmd.AddCommand(newCmdCreate(o))
 	o.configFlags.AddFlags(cmd.Flags())
-
 	return cmd, nil
 }
