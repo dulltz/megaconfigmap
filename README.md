@@ -1,7 +1,7 @@
 # MegaConfigMap
 
 As you may already know, ConfigMap has 1MB size limit.  
-However we often create configuration files larger than 1MB.👼
+However we often create configuration files larger than 1MB 👼
 
 **megaconfigmap** enables you to manage ConfigMap larger than 1MB.
 
@@ -32,10 +32,11 @@ This system consists of two components:
    ```console
    $ kubectl exec -it megaconfigmap-demo -- ls -lh /demo
    ```
-
-## How to use
-1. Create a megaconfigmap by `kubectl megaconfigmap create <name> --from-file=<your-large-file>`
-1. Create a pod with a special init-container which shares the volume of megaconfigmap.
+1. Cleanup the resources.
+   ```console
+   $ kubectl delete -f examples/pod.yaml
+   $ kubectl delete configmap my-conf
+   ```
 
 ## How it works
 1. Create megaconfigmap and partial-configmaps by `kubectl megaconfigmap create`.
@@ -47,8 +48,8 @@ This system consists of two components:
 - *megaconfigmap*
     - The owner of partial-configmaps
     - It is not mounted
-    - It has only metadata
-    - Having the following labels:
+    - It has only metadata.
+    - It has the following labels:
         - `megaconfigmap.io/id`: hash string of the config file
         - `megaconfigmap.io/filename`: output file name
         - `megaconfigmap.io/master`: indicate that this resource is a megaconfigmap
@@ -56,7 +57,7 @@ This system consists of two components:
     - The children of the megaconfigmap. If you delete megaconfigmap, its children are also deleted.
     - These configmaps contain the partial data of source file.
     - The file content is split into multiple configmaps to hold large file.
-    - Having the following labels:
+    - They have the following labels:
         - `megaconfigmap.io/id`: hash string of the config file
         - `megaconfigmap.io/filename`: output file name
         - `megaconfigmap.io/order`: the ordering number of the configmap
