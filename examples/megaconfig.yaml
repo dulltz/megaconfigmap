@@ -1,9 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  labels:
-    megaconfigmap.io/filename: debug
-    megaconfigmap.io/id: aaa
-    megaconfigmap.io/master: "true"
-  name: megaconfigmap
-data: {}
