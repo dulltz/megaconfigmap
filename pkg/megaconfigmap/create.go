@@ -11,6 +11,7 @@ import (
 
 	"github.com/dulltz/megaconfigmap/pkg/combiner"
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -19,7 +20,7 @@ import (
 )
 
 const (
-	blockSize = int64(400 * 1024)
+	defaultBlockBytes = int64(400 * 1024)
 )
 
 var (
@@ -36,6 +37,7 @@ type CreateOptions struct {
 	k8s *kubernetes.Clientset
 
 	megaConfigMapName string
+	blockBytes        int64
 	outputFile        string
 	sourceFile        string
 }
@@ -73,12 +75,14 @@ func (o *CreateOptions) createFromFile() error {
 		return err
 	}
 
-	numPartials := int64(math.Ceil(float64(stat.Size()) / float64(blockSize)))
+	numPartials := int64(math.Ceil(float64(stat.Size()) / float64(o.blockBytes)))
 	fmt.Printf("creating %d partial configmaps from %s...\n", numPartials, o.megaConfigMapName)
+	var g errgroup.Group
 	for i := int64(0); i < numPartials; i++ {
-		err := func() error {
-			buf := make([]byte, blockSize)
-			n, err := f.ReadAt(buf, i*blockSize)
+		i := i
+		g.Go(func() error {
+			buf := make([]byte, o.blockBytes)
+			n, err := f.ReadAt(buf, i*o.blockBytes)
 			if err != io.EOF && err != nil {
 				defer o.k8s.CoreV1().ConfigMaps(*o.configFlags.Namespace).Delete(master.Name, &metav1.DeleteOptions{})
 				return err
@@ -89,12 +93,9 @@ func (o *CreateOptions) createFromFile() error {
 				return err
 			}
 			return nil
-		}()
-		if err != nil {
-			return err
-		}
+		})
 	}
-	return nil
+	return g.Wait()
 }
 
 func (o *CreateOptions) getCheckSum() (string, error) {
@@ -182,6 +183,7 @@ func NewCmdCreate(streams genericclioptions.IOStreams) *cobra.Command {
 		},
 	}
 	o.configFlags.AddFlags(cmd.Flags())
-	cmd.Flags().StringVar(&o.sourceFile, "from-file", o.sourceFile, "Specify filename to be stored in megaconfigmap.")
+	cmd.Flags().StringVar(&o.sourceFile, "from-file", o.sourceFile, "Filename to be stored in megaconfigmap.")
+	cmd.Flags().Int64Var(&o.blockBytes, "block-bytes", defaultBlockBytes, "Block size of partial configmaps.")
 	return cmd
 }
