@@ -1,3 +1,6 @@
-.git/
-examples/
+.git
+.github
+examples
 Dockerfile
+.gitignore
+README.md

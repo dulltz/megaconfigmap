@@ -112,6 +112,9 @@ func (c *Combiner) sortContents(configmaps *corev1.ConfigMapList) ([]string, err
 		if !ok {
 			return nil, fmt.Errorf("partial-item is not found in configmap %s/%s", cm.GetNamespace(), cm.GetName())
 		}
+		if len(contents) <= ordering {
+			return nil, fmt.Errorf("out of index from contents slice. ordering: %d", ordering)
+		}
 		contents[ordering] = partial
 	}
 	return contents, nil
