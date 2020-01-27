@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestCombiner_sortContents(t *testing.T) {
@@ -18,9 +18,9 @@ func TestCombiner_sortContents(t *testing.T) {
 		{
 			name: "valid",
 			args: &corev1.ConfigMapList{Items: []corev1.ConfigMap{
-				{ObjectMeta: v1.ObjectMeta{Labels: map[string]string{OrderLabel: "1"}}, Data: map[string]string{PartialItemKey: "b"}},
-				{ObjectMeta: v1.ObjectMeta{Labels: map[string]string{OrderLabel: "0"}}, Data: map[string]string{PartialItemKey: "a"}},
-				{ObjectMeta: v1.ObjectMeta{Labels: map[string]string{OrderLabel: "2"}}, Data: map[string]string{PartialItemKey: "c"}},
+				{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{OrderLabel: "1"}}, Data: map[string]string{PartialItemKey: "b"}},
+				{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{OrderLabel: "0"}}, Data: map[string]string{PartialItemKey: "a"}},
+				{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{OrderLabel: "2"}}, Data: map[string]string{PartialItemKey: "c"}},
 			}},
 			want:    []string{"a", "b", "c"},
 			wantErr: false,
@@ -28,9 +28,9 @@ func TestCombiner_sortContents(t *testing.T) {
 		{
 			name: "invalid: out-of-index but not panic",
 			args: &corev1.ConfigMapList{Items: []corev1.ConfigMap{
-				{ObjectMeta: v1.ObjectMeta{Labels: map[string]string{OrderLabel: "2"}}, Data: map[string]string{PartialItemKey: "b"}},
-				{ObjectMeta: v1.ObjectMeta{Labels: map[string]string{OrderLabel: "1"}}, Data: map[string]string{PartialItemKey: "a"}},
-				{ObjectMeta: v1.ObjectMeta{Labels: map[string]string{OrderLabel: "3"}}, Data: map[string]string{PartialItemKey: "c"}},
+				{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{OrderLabel: "2"}}, Data: map[string]string{PartialItemKey: "b"}},
+				{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{OrderLabel: "1"}}, Data: map[string]string{PartialItemKey: "a"}},
+				{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{OrderLabel: "3"}}, Data: map[string]string{PartialItemKey: "c"}},
 			}},
 			want:    nil,
 			wantErr: true,
@@ -38,9 +38,9 @@ func TestCombiner_sortContents(t *testing.T) {
 		{
 			name: "invalid: unexpected value",
 			args: &corev1.ConfigMapList{Items: []corev1.ConfigMap{
-				{ObjectMeta: v1.ObjectMeta{Labels: map[string]string{OrderLabel: "1"}}, Data: map[string]string{PartialItemKey: "b"}},
-				{ObjectMeta: v1.ObjectMeta{Labels: map[string]string{OrderLabel: "0"}}, Data: map[string]string{PartialItemKey: "a"}},
-				{ObjectMeta: v1.ObjectMeta{Labels: map[string]string{OrderLabel: "two"}}, Data: map[string]string{PartialItemKey: "c"}},
+				{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{OrderLabel: "1"}}, Data: map[string]string{PartialItemKey: "b"}},
+				{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{OrderLabel: "0"}}, Data: map[string]string{PartialItemKey: "a"}},
+				{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{OrderLabel: "two"}}, Data: map[string]string{PartialItemKey: "c"}},
 			}},
 			want:    nil,
 			wantErr: true,
@@ -48,9 +48,9 @@ func TestCombiner_sortContents(t *testing.T) {
 		{
 			name: "invalid: orderLabel not found",
 			args: &corev1.ConfigMapList{Items: []corev1.ConfigMap{
-				{ObjectMeta: v1.ObjectMeta{Labels: map[string]string{OrderLabel: "1"}}, Data: map[string]string{PartialItemKey: "b"}},
-				{ObjectMeta: v1.ObjectMeta{Labels: map[string]string{"aaa": "0"}}, Data: map[string]string{PartialItemKey: "a"}},
-				{ObjectMeta: v1.ObjectMeta{Labels: map[string]string{OrderLabel: "2"}}, Data: map[string]string{PartialItemKey: "c"}},
+				{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{OrderLabel: "1"}}, Data: map[string]string{PartialItemKey: "b"}},
+				{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"aaa": "0"}}, Data: map[string]string{PartialItemKey: "a"}},
+				{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{OrderLabel: "2"}}, Data: map[string]string{PartialItemKey: "c"}},
 			}},
 			want:    nil,
 			wantErr: true,

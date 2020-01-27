@@ -1,16 +1,24 @@
 name: Kind
-on: [pull_request, push]
+on: [push]
 jobs:
   build:
-    name: Kind
+    name: E2E Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@master
-      - name: Setup Kind
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.13
+        id: go
+      - name: Install kubectl-megaconfigmap
+        run: go install -mod=vendor ./cmd/kubectl-megaconfigmap
+      - name: Set up Kind
         uses: engineerd/setup-kind@v0.3.0
         with:
           version: "v0.7.0"
-      - name: Testing
-        run: |
-          make build TAG=latest
-          kind load docker-image quay.io/dulltz/megaconfigmap:latest
+      - name: Build Image
+        run: make docker-build TAG=latest
+      - name: Load Image to Kind
+        run: kind load docker-image quay.io/dulltz/megaconfigmap-combiner:latest
+      - name: Run Test
+        run: make e2e

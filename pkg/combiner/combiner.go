@@ -48,12 +48,12 @@ func (c *Combiner) Run() error {
 	if err != nil {
 		return fmt.Errorf("failed to get megaconfigmap %s; %w", c.megaConfigMapName, err)
 	}
-	mapID, ok := megaConfig.GetLabels()[IDLabel]
+	labelMapID, ok := megaConfig.GetLabels()[IDLabel]
 	if !ok {
 		return errors.New(IDLabel + " is not found in megaconfigmap " + c.megaConfigMapName)
 	}
 	configmaps, err := c.k8s.CoreV1().ConfigMaps(namespace).List(
-		metav1.ListOptions{LabelSelector: fmt.Sprintf("%s=%s,%s!=true", IDLabel, mapID, MasterLabel)})
+		metav1.ListOptions{LabelSelector: fmt.Sprintf("%s=%s,%s!=true", IDLabel, labelMapID, MasterLabel)})
 	if err != nil {
 		return fmt.Errorf("failed to list configmaps; %w", err)
 	}
@@ -65,8 +65,9 @@ func (c *Combiner) Run() error {
 	if err != nil {
 		return err
 	}
-	if mapID != MapID(data, megaConfig.Namespace, megaConfig.Name) {
-		return errors.New("checksum is not matched")
+	currentMapID := MapID(data, megaConfig.Namespace, megaConfig.Name)
+	if labelMapID != currentMapID {
+		return fmt.Errorf("checksum is not matched. checksumInLabel:%s, checksumActual:%s", labelMapID, currentMapID)
 	}
 	fileName, ok := megaConfig.Labels[FileNameLabel]
 	if !ok {
@@ -112,7 +113,7 @@ func (c *Combiner) sortContents(configmaps *corev1.ConfigMapList) ([]string, err
 		if !ok {
 			return nil, fmt.Errorf("partial-item is not found in configmap %s/%s", cm.GetNamespace(), cm.GetName())
 		}
-		if len(contents) <= ordering {
+		if len(contents) < ordering {
 			return nil, fmt.Errorf("out of index from contents slice. ordering: %d", ordering)
 		}
 		contents[ordering] = partial

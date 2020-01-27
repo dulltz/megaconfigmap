@@ -12,7 +12,7 @@ import (
 	"github.com/dulltz/megaconfigmap/pkg/combiner"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/kubernetes"
@@ -40,6 +40,13 @@ type CreateOptions struct {
 	blockBytes        int64
 	outputFile        string
 	sourceFile        string
+}
+
+func (o *CreateOptions) getNamespace() string {
+	if o.configFlags == nil || len(*o.configFlags.Namespace) == 0 {
+		return "default"
+	}
+	return *o.configFlags.Namespace
 }
 
 // Create MegaConfigMap
@@ -84,12 +91,12 @@ func (o *CreateOptions) createFromFile() error {
 			buf := make([]byte, o.blockBytes)
 			n, err := f.ReadAt(buf, i*o.blockBytes)
 			if err != io.EOF && err != nil {
-				defer o.k8s.CoreV1().ConfigMaps(*o.configFlags.Namespace).Delete(master.Name, &metav1.DeleteOptions{})
+				defer o.k8s.CoreV1().ConfigMaps(o.getNamespace()).Delete(master.Name, &metav1.DeleteOptions{})
 				return err
 			}
 			err = o.createPartialConfigMap(buf[:n], i, checkSum, master)
 			if err != nil {
-				defer o.k8s.CoreV1().ConfigMaps(*o.configFlags.Namespace).Delete(master.Name, &metav1.DeleteOptions{})
+				defer o.k8s.CoreV1().ConfigMaps(o.getNamespace()).Delete(master.Name, &metav1.DeleteOptions{})
 				return err
 			}
 			return nil
@@ -103,13 +110,13 @@ func (o *CreateOptions) getCheckSum() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return combiner.MapID(data, *o.configFlags.Namespace, o.megaConfigMapName), nil
+	return combiner.MapID(data, o.getNamespace(), o.megaConfigMapName), nil
 }
 
-func (o *CreateOptions) createPartialConfigMap(data []byte, order int64, sum string, master *v1.ConfigMap) error {
-	_, err := o.k8s.CoreV1().ConfigMaps(*o.configFlags.Namespace).Create(&v1.ConfigMap{
+func (o *CreateOptions) createPartialConfigMap(data []byte, order int64, sum string, master *corev1.ConfigMap) error {
+	_, err := o.k8s.CoreV1().ConfigMaps(o.getNamespace()).Create(&corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: *o.configFlags.Namespace,
+			Namespace: o.getNamespace(),
 			Name:      fmt.Sprintf("%s-%d", o.megaConfigMapName, order),
 			Labels: map[string]string{
 				combiner.IDLabel:       sum,
@@ -128,10 +135,10 @@ func (o *CreateOptions) createPartialConfigMap(data []byte, order int64, sum str
 	return err
 }
 
-func (o *CreateOptions) createMasterConfigMap(sum string) (*v1.ConfigMap, error) {
-	_, err := o.k8s.CoreV1().ConfigMaps(*o.configFlags.Namespace).Create(&v1.ConfigMap{
+func (o *CreateOptions) createMasterConfigMap(sum string) (*corev1.ConfigMap, error) {
+	_, err := o.k8s.CoreV1().ConfigMaps(o.getNamespace()).Create(&corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: *o.configFlags.Namespace,
+			Namespace: o.getNamespace(),
 			Name:      o.megaConfigMapName,
 			Labels: map[string]string{
 				combiner.IDLabel:       sum,
@@ -143,7 +150,7 @@ func (o *CreateOptions) createMasterConfigMap(sum string) (*v1.ConfigMap, error)
 	if err != nil {
 		return nil, err
 	}
-	return o.k8s.CoreV1().ConfigMaps(*o.configFlags.Namespace).Get(o.megaConfigMapName, metav1.GetOptions{})
+	return o.k8s.CoreV1().ConfigMaps(o.getNamespace()).Get(o.megaConfigMapName, metav1.GetOptions{})
 }
 
 // NewMegaConfigMapOptions provides an instance of MegaConfigMapOptions with default values
