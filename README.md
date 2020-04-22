@@ -1,15 +1,19 @@
 # MegaConfigMap
 
+[![Actions Status](https://github.com/dulltz/megaconfigmap/workflows/Go/badge.svg)](https://github.com/dulltz/megaconfigmap/actions)
+[![Actions Status](https://github.com/dulltz/megaconfigmap/workflows/Kind/badge.svg)](https://github.com/dulltz/megaconfigmap/actions)
+
 As you may already know, ConfigMap has 1MB size limit.  
 However we often create configuration files larger than 1MB 👼
 
 **megaconfigmap** enables you to manage ConfigMap larger than 1MB.
 
 This system consists of two components:
-- `kubectl-megaconfigmap` - kubectl plugin to create large congfigmap.
-- `combiner` - One-shot program to combine partial comfigmaps to large one. It is designed to run on init-container. 
+- `kubectl-megaconfigmap` - kubectl plugin to create a large configmap.
+- `combiner` - One-shot program to combine partial configmaps to large one. It is designed to run on init-container.
 
 ## Quick start
+
 1. Install kubectl-megaconfigmap.
    ```console
    $ git clone git@github.com:dulltz/megaconfigmap.git
@@ -39,12 +43,14 @@ This system consists of two components:
    ```
 
 ## How it works
+
 1. Create megaconfigmap and partial-configmaps by `kubectl megaconfigmap create`.
 1. Combiner init-container collect partial-item from megaconfigmap specified at `--megaconfigmap` flag.
 1. Combiner dump the file to the path on the share volume specified at `--share-dir` flag.
 1. If you mount the share volume to the main container, you can get the large file there. 
 
 ## Glossary
+
 - *megaconfigmap*
     - The owner of partial-configmaps
     - It is not mounted
@@ -63,4 +69,5 @@ This system consists of two components:
         - `megaconfigmap.io/order`: the ordering number of the configmap
 
 ## Caution
+
 Do not create too large megaconfigmap because Etcd can store only 2-3GB.
